@@ -5,6 +5,7 @@ from app.core.jwt_helper import create_access_token
 from app.schemas.user import LoginRequest, LoginResponse, UserResponseDto
 from app.model.user import User
 from app.core.db import get_db
+from app.core.auth_helper import verify_password
 
 auth_router = APIRouter(
     prefix = "/auth",
@@ -18,7 +19,7 @@ async def login_user(login_request : LoginRequest , db : AsyncSession = Depends(
         select(User).filter(User.email == login_request.email)
     )
     user = user.scalar_one_or_none()
-    if not user or user.password != login_request.password:
+    if not user or not verify_password(login_request.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"

@@ -14,13 +14,13 @@ expense_router = APIRouter(
 
 
 @expense_router.post("/" , response_model=APIResponse)
-async def create_expense(expense_request_dto: ExpenseRequestDto, db: AsyncSession = Depends(get_db) , user : User = Depends(get_current_user)):
+async def create_expense(expense_request_dto: ExpenseRequestDto, db: AsyncSession = Depends(get_db) ,  user: User = Depends(get_current_user)):
     
     new_expense = Expense(
         title=expense_request_dto.title,
         description=expense_request_dto.description,
         amount=expense_request_dto.amount,
-       
+        user_id=user.id
     )
     db.add(new_expense)
     await db.commit()
@@ -47,8 +47,13 @@ async def get_all_expenses(db: AsyncSession = Depends(get_db)):
 
 #get exense by id
 @expense_router.get("/{expense_id}", response_model=APIResponse)
-async def get_expense_by_id(expense_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Expense).where(Expense.id == expense_id))
+async def get_expense_by_id(expense_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    result = await db.execute(result = await db.execute(
+    select(Expense).where(
+        Expense.id == expense_id,
+        Expense.user_id == user.id
+    )
+))
     expense = result.scalar_one_or_none()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -61,7 +66,12 @@ async def get_expense_by_id(expense_id: int, db: AsyncSession = Depends(get_db))
 #update expense by id
 @expense_router.put("/{expense_id}", response_model=APIResponse)
 async def update_expense_by_id(expense_id: int, expense_request_dto: ExpenseRequestDto, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Expense).where(Expense.id == expense_id))
+    result = await db.execute(result = await db.execute(
+    select(Expense).where(
+        Expense.id == expense_id,
+        Expense.user_id == user.id
+    )
+))
     expense = result.scalar_one_or_none()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -69,6 +79,8 @@ async def update_expense_by_id(expense_id: int, expense_request_dto: ExpenseRequ
     expense.title = expense_request_dto.title
     expense.description = expense_request_dto.description
     expense.amount = expense_request_dto.amount
+   
+    
     
     await db.commit()
     await db.refresh(expense)
@@ -80,9 +92,14 @@ async def update_expense_by_id(expense_id: int, expense_request_dto: ExpenseRequ
     )
 
 #delete expense by id
-@expense_router.delete("/{expense_id}", response_model=APIResponse)     
-async def delete_expense_by_id(expense_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Expense).where(Expense.id == expense_id))
+@expense_router.delete("/{expense_id}", response_model=APIResponse )     
+async def delete_expense_by_id(expense_id: int, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    result = await db.execute(result = await db.execute(
+    select(Expense).where(
+        Expense.id == expense_id,
+        Expense.user_id == user.id
+    )
+))
     expense = result.scalar_one_or_none()
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -95,3 +112,4 @@ async def delete_expense_by_id(expense_id: int, db: AsyncSession = Depends(get_d
         message="Expense deleted successfully",
         data={"expense": ExpenseResponseDto.model_validate(expense)}
     )
+

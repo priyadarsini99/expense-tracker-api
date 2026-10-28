@@ -1,11 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
-
+from pydantic import BaseModel, EmailStr
 from app.core.db import get_db  
 from app.model.user import User
+from app.schemas.user import UserUpdateDto, UserResponseDto
 from app.schemas.user import UserRequestDto, UserResponseDto
 from app.schemas.api_response import APIResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from app.core.auth_helper import hash_password
+from app.core.secure import get_current_user
+from app.core.db import get_db  
+from app.model.user import User
 
 user_router = APIRouter(
     prefix="/user",
@@ -16,7 +22,7 @@ async def create_user(user_request_dto: UserRequestDto, db: AsyncSession = Depen
     new_user = User(
         username=user_request_dto.username,
         email=user_request_dto.email,
-        password=user_request_dto.password
+        password=hash_password(user_request_dto.password)
     )
     db.add(new_user)
     await db.commit()
@@ -60,7 +66,7 @@ async def update_user_by_id(user_id: int, user_request_dto: UserRequestDto, db: 
     
     user.username = user_request_dto.username
     user.email = user_request_dto.email
-    user.password = user_request_dto.password
+    user.password = hash_password(user_request_dto.password)
     
     await db.commit()
     await db.refresh(user)
@@ -86,3 +92,35 @@ async def delete_user_by_id(user_id: int, db: AsyncSession = Depends(get_db)):
         message="User deleted successfully"
     )
 
+
+
+@user_router.put("/me", response_model=APIResponse)
+async def update_my_profile(
+    user_request_dto: UserUpdateDto,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    current_user.username = user_request_dto.username
+    current_user.email = user_request_dto.email
+
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Email already exists"
+        )
+
+    await db.refresh(current_user)
+
+    return APIResponse(
+        status="success",
+        message="Profile updated successfully",
+        data={
+            "user": UserResponseDto.model_validate(current_user)
+        }
+    )
+
+    

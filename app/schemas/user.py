@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
 
 
@@ -75,4 +75,7 @@ class LoginResponse(BaseModel):
         description="JWT access token for the user"
     )
 
-    user: UserResponseDto 
+   
+class UserUpdateDto(BaseModel):
+    username: str
+    email: EmailStr 

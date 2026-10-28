@@ -11,5 +11,10 @@ class Expense(BASE):
     description = Column(String(500), nullable=True)
     amount = Column(Float, nullable=False)
     date = Column(Date, default=datetime.utcnow)
-    
+
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False
+    )
     
